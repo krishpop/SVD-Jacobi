@@ -15,16 +15,19 @@
 
 #define LEFT 0
 #define RIGHT 1
+
 // matrix functions
-void copy_matrix(double * a, double ** b, int n);
+void copy_matrix(double * a, double * b, int n);
 void identity_matrix(double ** m, int n);
 void transpose(double *matrix, double ** transposed_matrix, int n);
-void multiply(double *m1, double *m2, double ** new_matrix, int p, int q, int n);
+void multiply(double *m1, double *m2, double ** new_matrix, int n);
 
 // Jacobi method functions
 void jacobi(double * a, int n, double * s, double * u, double * v);
 void compute_theta(double * a, double ** left_matrix);
 void generate_composite_matrix(double ** matrix, int p, int q, double angle, int side);
+void rotate(double * a, int n, double * u, double * v, int p, int q);
+int not_converged(double *a, int n);
 
 void jacobi(double * a, int n, double * s, double * u, double * v) {
     // Creates a copy of A, make all changes to A in A
@@ -36,32 +39,50 @@ void jacobi(double * a, int n, double * s, double * u, double * v) {
     identity_matrix(&u, n);
     int sweep = 0;
 
-    double epsilon = 1e-15;
-
-    while (not_converged(a)) {
+    while (not_converged(a, n)) { // epsilon is 10^-15
         for (int p = 0; p < n-1; p++) {
             for (int q = q+1; q < n; q ++) {
-                double theta, phi;
-                double a_pp = a[p*n + p];
-                double a_pq = a[p*n + q];
-                double a_qp = a[q*n + p];
-                double a_qq = a[q*n + q];
-                double theta_phi = atan((a_qp + a_pq) / (a_qq - a_pp));
-                double theta_phi_d = atan((a_qp - a_pq) / (a_qq + a_pp));
-                theta = (theta_phi - theta_phi_d) / 2;
-                phi = (theta_phi + theta_phi_d) / 2;
-                double * l_matrix, * r_matrix;
-                generate_composite_matrix(&l_matrix, p, q, theta, LEFT);
-                generate_composite_matrix(&r_matrix, p, q, phi, RIGHT);
-                double * temp;
-                copy_matrix(a, &temp, n);
+                rotate(&a, n, &s, &u, &v, p, q);
             }
         }
         sweep++;
     }
+    
+    // TODO: order s, u, and v. s must not contain negative values
 }
 
-void multiply(double *m1, double *m2, double ** new_matrix, int p, int q, int n) {
+void rotate(double * a, int n, double * u, double * v, int p, int q) {
+    double theta, phi;
+    double a_pp = a[p*n + p];
+    double a_pq = a[p*n + q];
+    double a_qp = a[q*n + p];
+    double a_qq = a[q*n + q];
+    double theta_phi = atan((a_qp + a_pq) / (a_qq - a_pp));
+    double theta_phi_d = atan((a_qp - a_pq) / (a_qq + a_pp));
+    theta = (theta_phi - theta_phi_d) / 2;
+    phi = (theta_phi + theta_phi_d) / 2;
+    double * l_matrix, * r_matrix;
+    generate_composite_matrix(&l_matrix, p, q, theta, LEFT);
+    generate_composite_matrix(&r_matrix, p, q, phi, RIGHT);
+    
+    double * temp = (double *)malloc(sizeof(double) * n * n);
+    // Rotate a to the left and right
+    multiply(l_matrix, a, &temp, n);
+    multiply(temp, r_matrix, &a, n);
+    
+    // Apply rotation on U
+    multiply(l_matrix, u, &temp, n);
+    copy_matrix(temp, u, n);
+    
+    // Apply rotation on V
+
+    multiply(v, r_matrix, &temp, n);
+    copy_matrix(temp, v, n);
+    free(temp); free(l_matrix); free(r_matrix);
+}
+
+// TODO: optimize, just multiply col p and q, then row p and q
+void multiply(double * m1, double * m2, double ** new_matrix, int n) {
     int new_row, new_column, old_x;
 
     for (new_row = 0; new_row < n; new_row++) {
@@ -90,10 +111,24 @@ void generate_composite_matrix(double ** matrix, int p, int q, double angle, int
     }
 }
 
-void copy_matrix(double * a, double ** b, int n) {
-    *b = (double *)malloc(sizeof(double)*n*n);
+int not_converged(double *a, int n) {
+    double epsilon = 1e-15;
+    int row, col;
+    for(row = 0; row < n; row ++) {
+        for(col = 0; col < n; col ++) {
+            if (row == col) continue;
+            else {
+                if (a[row*n + col] > epsilon) // not yet converged, error > epsilon
+                    return 1; 
+            }
+        }
+    }
+    return 0;
+}
+
+void copy_matrix(double * a, double * b, int n) {
     for (int i = 0; i < n*n; i++) {
-        (*b)[i] = a[i];
+        b[i] = a[i];
     }
 }
 
