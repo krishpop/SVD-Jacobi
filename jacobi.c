@@ -68,6 +68,7 @@ void jacobi(double * a, int n, double * s, double * u, double * v) {
 
     order_a(a, n, u, v);
     generate_s(a, s, n);
+    // TODO: order a, u, and v. s must have non-neg decreasing values
 }
 
 void rotate(double * a, int n, double * u, double * v, int p, int q) {
@@ -164,10 +165,10 @@ void multiply(double * m1, double * m2, double * new_matrix, int n) {
     int new_row, new_column, old_x;
 
     for (new_row = 0; new_row < n; new_row++) {
-
+        
         for (new_column = 0; new_column < n; new_column++) {
             new_matrix[new_row*n + new_column] = 0;
-
+            
             for (old_x = 0; old_x < n; old_x++) {
                 new_matrix[new_row*n + new_column] += m1[new_row*n + old_x] \
                     * m2[old_x*n + new_column];
@@ -222,13 +223,29 @@ void identity_matrix(double ** m, int n) {
 void transpose(double * a, double ** transposed_matrix, int n) {
     int row, column;
     *transposed_matrix = (double*)malloc(sizeof(double)*n*n);
-
+    
     for (row=0; row < n; row++) {
         for (column=0; column < n; column++) {
             (*transposed_matrix)[row*n+column] = a[column*n+row]; 
             (*transposed_matrix)[column*n+row] = a[row*n+column];
         }
     }
+}
+
+double* gen_matrix(int n) {
+    double* a = malloc(n * n * sizeof(double));
+    int i, j;
+    double i_p_1, j_p_1;
+    for (i = 0; i < n; ++i)
+    {
+        for (j = 0; j < n; ++j)
+        {
+            i_p_1 = ((double) i) + 1;
+            j_p_1 = ((double) j) + 1;
+            a[i * n + j] = sqrt(i_p_1 * i_p_1 + j_p_1 * j_p_1);
+        }
+    }
+    return a;
 }
 
 void print_matrix(double *m, int rows, int columns) {
@@ -243,6 +260,31 @@ void print_matrix(double *m, int rows, int columns) {
 }
 
 int main(int argc, char const *argv[]) {
+    if (argc != 2) {
+        ERROR("Invoke as ./hw2 [n] \n");
+    }
+    int n = atoi(argv[1]);
+    double *a, *u, *v, *s;
+    u = (double *)malloc(sizeof(double) * n * n);
+    v = (double *)malloc(sizeof(double) * n * n);
+    s = malloc(sizeof(double) * n);
+    a = gen_matrix(n);
+    jacobi(a, n, s, u, v);
+
+    printf("\nFINAL a, s, u, v\n");
+    
+    printf("\na = \n");
+    print_matrix(a, n, n);
+    
+    printf("\ns = \n");
+    print_matrix(s, 1, n);
+
+    printf("\nu = \n");
+    print_matrix(u, n, n);
+    
+    printf("\nv = \n");
+    print_matrix(v, n, n);
+
+    free(s); free(u); free(v); free(a);
     return 0;
 }
-
