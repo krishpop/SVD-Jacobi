@@ -66,6 +66,8 @@ void jacobi(double * a, int n, double * s, double * u, double * v) {
         if (sweep > max_sweeps) ERROR("failing to converge");
     }
 
+    printf("sweeps: %d\n", sweep);
+
     order_a(a, n, u, v);
     generate_s(a, s, n);
     // TODO: order a, u, and v. s must have non-neg decreasing values
@@ -261,7 +263,7 @@ void print_matrix(double *m, int rows, int columns) {
 
 int main(int argc, char const *argv[]) {
     if (argc != 2) {
-        ERROR("Invoke as ./hw2 [n] \n");
+        ERROR("Invoke as ./jac [n] \n");
     }
     int n = atoi(argv[1]);
     double *a, *u, *v, *s;
@@ -272,18 +274,18 @@ int main(int argc, char const *argv[]) {
     jacobi(a, n, s, u, v);
 
     printf("\nFINAL a, s, u, v\n");
-    
+
     printf("\na = \n");
     print_matrix(a, n, n);
-    
-    printf("\ns = \n");
-    print_matrix(s, 1, n);
 
     printf("\nu = \n");
     print_matrix(u, n, n);
-    
+
     printf("\nv = \n");
     print_matrix(v, n, n);
+
+    printf("\ns = \n");
+    print_matrix(s, 1, n);
 
     free(s); free(u); free(v); free(a);
     return 0;

@@ -1,11 +1,8 @@
 CC = gcc
 
-all: hw2 clean
+all: jac clean
 
-hw2: hw2.o
-	${CC} -o $@ $^
-
-hw2-old: hw2-old.o
+jac: jacobi.o
 	${CC} -o $@ $^
 
 clean:
