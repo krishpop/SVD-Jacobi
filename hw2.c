@@ -41,14 +41,18 @@ void jacobi(double * a, int n, double * s, double * u, double * v) {
     double * a_copy = (double *)malloc(sizeof(double) * n * n);
     copy_matrix(a, a_copy, n);
     
-    // Checks if u, v, and s are initialized
-    // if (u == NULL) u = (double *)malloc(sizeof(double) * n * n);
-    // if (v == NULL) v = (double *)malloc(sizeof(double) * n * n);
-    // if (s == NULL) s = (double *)malloc(sizeof(double) * n);
-    
     // Initializes U and V as identity matrices
-    identity_matrix(&u, n);
-    identity_matrix(&v, n);
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (i == j) {
+                u[i*n + j] = 1.0;
+                v[i*n + j] = 1.0;
+            } else {
+                u[i*n + j] = 0.0;
+                v[i*n + j] = 0.0;
+            }
+        }
+    }
     int sweep = 0;
     int max_sweeps = INT_MAX;
 
@@ -61,10 +65,7 @@ void jacobi(double * a, int n, double * s, double * u, double * v) {
         sweep++;
         if (sweep > max_sweeps) ERROR("failing to converge");
     }
-    printf("sweeps: %d\n", sweep);
-    printf("matrix a: \n");
-    print_matrix(a, n, n);
-    
+
     order_a(a, n, u, v);
     generate_s(a, s, n);
     // TODO: order a, u, and v. s must have non-neg decreasing values
@@ -123,9 +124,9 @@ void order_a(double * a, int n, double * u, double * v) {
             a[max_d_index * n + max_d_index] = temp_d;
             swap_rows(permutation_matrix, sort_index, max_d_index, n);
             // reorder u and v wrt swapped values in a
-            multiply(u, permutation_matrix, temp_matrix, n);
+            multiply(permutation_matrix, u, temp_matrix, n);
             copy_matrix(temp_matrix, u, n);
-            multiply(permutation_matrix, v, temp_matrix, n);
+            multiply(v, permutation_matrix, temp_matrix, n);
             copy_matrix(temp_matrix, v, n);
             // set permutation matrix back to identity
             free(permutation_matrix);
@@ -156,7 +157,6 @@ void swap_rows(double * i_mat, int row1, int row2, int n) {
 void generate_s(double * a, double * s, int n) {
     for (int d = 0; d < n; d ++) {
         s[d] = a[d*n + d];
-        printf("%d -> %f\n", d, s[d]);
     }
 }
 
@@ -271,16 +271,20 @@ int main(int argc, char const *argv[]) {
     a = gen_matrix(n);
     jacobi(a, n, s, u, v);
 
-    printf("\nFINAL \n");
+    printf("\nFINAL a, s, u, v\n");
+    
     printf("\na = \n");
     print_matrix(a, n, n);
-    printf("\nu = \n");
-    print_matrix(u, n, n);
-    printf("\nv = \n");
-    print_matrix(v, n, n);
+    
     printf("\ns = \n");
     print_matrix(s, 1, n);
 
-    free(s); free(a); free(u); free(v);
+    printf("\nu = \n");
+    print_matrix(u, n, n);
+    
+    printf("\nv = \n");
+    print_matrix(v, n, n);
+
+    free(s); free(u); free(v); free(a);
     return 0;
 }
