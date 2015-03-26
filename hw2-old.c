@@ -12,10 +12,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <limits.h>
 #include <math.h>
 
-#define ERROR(msg) exit (fprintf (stderr, "%s\n", msg))
 #define LEFT 0
 #define RIGHT 1
 
@@ -23,34 +21,25 @@
 void copy_matrix(double * a, double * b, int n);
 void identity_matrix(double ** m, int n);
 void transpose(double *matrix, double ** transposed_matrix, int n);
-void multiply(double *m1, double *m2, double * new_matrix, int n);
+void multiply(double *m1, double *m2, double ** new_matrix, int n);
 void print_matrix(double *m, int rows, int columns);
-double* gen_matrix(int n);
-void swap_rows(double * i_mat, int row1, int row2, int n);
 
 // Jacobi method functions
 void jacobi(double * a, int n, double * s, double * u, double * v);
+void compute_theta(double * a, double ** left_matrix);
 void generate_composite_matrix(double ** matrix, int p, int q, int n, double angle, int side);
 void rotate(double * a, int n, double * u, double * v, int p, int q);
-int not_converged(double * a, int n);
-void order_a(double * a, int n, double * u, double * v);
-void generate_s(double * a, double * s, int n);
+int not_converged(double *a, int n);
 
 void jacobi(double * a, int n, double * s, double * u, double * v) {
     // Creates a copy of A, make all changes to A in A
     double * a_copy = (double *)malloc(sizeof(double) * n * n);
     copy_matrix(a, a_copy, n);
     
-    // Checks if u, v, and s are initialized
-    // if (u == NULL) u = (double *)malloc(sizeof(double) * n * n);
-    // if (v == NULL) v = (double *)malloc(sizeof(double) * n * n);
-    // if (s == NULL) s = (double *)malloc(sizeof(double) * n);
-    
     // Initializes U and V as identity matrices
-    identity_matrix(&u, n);
-    identity_matrix(&v, n);
+    // identity_matrix(&v, n);
+    // identity_matrix(&u, n);
     int sweep = 0;
-    int max_sweeps = INT_MAX;
 
     while (not_converged(a, n)) { // epsilon is 10^-15
         for (int p = 0; p < n-1; p++) {
@@ -59,15 +48,9 @@ void jacobi(double * a, int n, double * s, double * u, double * v) {
             }
         }
         sweep++;
-        if (sweep > max_sweeps) ERROR("failing to converge");
     }
-    printf("sweeps: %d\n", sweep);
-    printf("matrix a: \n");
-    print_matrix(a, n, n);
     
-    order_a(a, n, u, v);
-    generate_s(a, s, n);
-    // TODO: order a, u, and v. s must have non-neg decreasing values
+    // TODO: order s, u, and v. s must not contain negative values
 }
 
 void rotate(double * a, int n, double * u, double * v, int p, int q) {
@@ -87,90 +70,31 @@ void rotate(double * a, int n, double * u, double * v, int p, int q) {
     
     double * temp = (double *)malloc(sizeof(double) * n * n);
     // Rotate a to the left and right
-    multiply(l_matrix, a, temp, n);
-    multiply(temp, r_matrix, a, n);
+    multiply(l_matrix, a, &temp, n);
+    multiply(temp, r_matrix, &a, n);
     
     // Apply rotation on U
-    multiply(l_matrix, u, temp, n);
+    multiply(l_matrix, u, &temp, n);
     copy_matrix(temp, u, n);
     
     // Apply rotation on V
 
-    multiply(v, r_matrix, temp, n);
+    multiply(v, r_matrix, &temp, n);
     copy_matrix(temp, v, n);
     free(temp); free(l_matrix); free(r_matrix);
 }
 
-void order_a(double * a, int n, double * u, double * v) {
-    int d_i, sort_index; // d_i is diagonal element index, sort_index is index of sort
-    double * permutation_matrix;
-    double * temp_matrix = (double *)malloc(sizeof(double) * n * n);
-    identity_matrix(&permutation_matrix, n);
-
-    for (sort_index = 0; sort_index < n; sort_index++) {
-        double max_d = 0.0;   // maximum diagonalized element
-        int max_d_index = 0;
-        for (d_i = sort_index; d_i < n; d_i++) {
-            if (fabs(a[d_i*n + d_i]) > fabs(max_d)) {
-                max_d = a[d_i*n + d_i];
-                max_d_index = d_i;
-            }
-        }
-        if (max_d_index > 0) {
-            // reordering values in a
-            double temp_d = a[sort_index * n + sort_index];
-            a[sort_index * n + sort_index] = max_d;
-            a[max_d_index * n + max_d_index] = temp_d;
-            swap_rows(permutation_matrix, sort_index, max_d_index, n);
-            // reorder u and v wrt swapped values in a
-            multiply(u, permutation_matrix, temp_matrix, n);
-            copy_matrix(temp_matrix, u, n);
-            multiply(permutation_matrix, v, temp_matrix, n);
-            copy_matrix(temp_matrix, v, n);
-            // set permutation matrix back to identity
-            free(permutation_matrix);
-            identity_matrix(&permutation_matrix, n);
-        }
-    }
-    for (d_i = 0; d_i < n; d_i ++) {
-        // if diagonal element less than 0, make it positive
-        if (a[d_i*n + d_i] < 0.0) {
-            permutation_matrix[d_i*n + d_i] = -1.0;
-        }
-    }
-    multiply(permutation_matrix, a, temp_matrix, n);
-    copy_matrix(temp_matrix, a, n);
-    multiply(u, permutation_matrix, temp_matrix, n);
-    copy_matrix(temp_matrix, u, n);
-    free(permutation_matrix); free(temp_matrix);
-}
-
-// swapping rows of an identity matrix
-void swap_rows(double * i_mat, int row1, int row2, int n) {
-    i_mat[row1*n + row1] = 0.0;
-    i_mat[row1*n + row2] = 1.0;
-    i_mat[row2*n + row2] = 0.0;
-    i_mat[row2*n + row1] = 1.0;
-}
-
-void generate_s(double * a, double * s, int n) {
-    for (int d = 0; d < n; d ++) {
-        s[d] = a[d*n + d];
-        printf("%d -> %f\n", d, s[d]);
-    }
-}
-
 // TODO: optimize, just multiply col p and q, then row p and q
-void multiply(double * m1, double * m2, double * new_matrix, int n) {
+void multiply(double * m1, double * m2, double ** new_matrix, int n) {
     int new_row, new_column, old_x;
 
     for (new_row = 0; new_row < n; new_row++) {
         
         for (new_column = 0; new_column < n; new_column++) {
-            new_matrix[new_row*n + new_column] = 0;
+            (*new_matrix)[new_row*n + new_column] = 0;
             
             for (old_x = 0; old_x < n; old_x++) {
-                new_matrix[new_row*n + new_column] += m1[new_row*n + old_x] \
+                (*new_matrix)[new_row*n + new_column] += m1[new_row*n + old_x] \
                     * m2[old_x*n + new_column];
             }
         }
@@ -205,22 +129,21 @@ int not_converged(double *a, int n) {
     return 0;
 }
 
-// Copies a to b
 void copy_matrix(double * a, double * b, int n) {
     for (int i = 0; i < n*n; i++) {
         b[i] = a[i];
     }
 }
 
-void identity_matrix(double ** m, int n) {
+void identity_matrix(double **m, int n) {
     int i;
     *m = (double*)calloc(sizeof(double), n*n);
     for (i=0; i<n; i++) {
-        (*m)[i*n+i] = 1.0;
+        (*m)[i*n+i] = (double)1;
     }
 }
 
-void transpose(double * a, double ** transposed_matrix, int n) {
+void transpose(double *a, double ** transposed_matrix, int n) {
     int row, column;
     *transposed_matrix = (double*)malloc(sizeof(double)*n*n);
     
@@ -232,7 +155,8 @@ void transpose(double * a, double ** transposed_matrix, int n) {
     }
 }
 
-double* gen_matrix(int n) {
+double* gen_matrix(int n)
+{
     double* a = malloc(n * n * sizeof(double));
     int i, j;
     double i_p_1, j_p_1;
@@ -248,7 +172,7 @@ double* gen_matrix(int n) {
     return a;
 }
 
-void print_matrix(double *m, int rows, int columns) {
+void print_matrix(double *m, int rows, int columns){
     int row, column;
     for (row=0; row<rows; row++) {
         for (column=0; column<columns; column++) {
@@ -259,15 +183,13 @@ void print_matrix(double *m, int rows, int columns) {
     printf("\n");
 }
 
-int main(int argc, char const *argv[]) {
-    if (argc != 2) {
-        ERROR("Invoke as ./hw2 [n] \n");
-    }
+int main(int argc, char const *argv[])
+{
     int n = atoi(argv[1]);
     double *a, *u, *v, *s;
-    u = (double *)malloc(sizeof(double) * n * n);
-    v = (double *)malloc(sizeof(double) * n * n);
-    s = malloc(sizeof(double) * n);
+    identity_matrix(&v, n);
+    identity_matrix(&u, n);
+    s = malloc(n * sizeof(double));
     a = gen_matrix(n);
     jacobi(a, n, s, u, v);
 
@@ -279,8 +201,10 @@ int main(int argc, char const *argv[]) {
     printf("\nv = \n");
     print_matrix(v, n, n);
     printf("\ns = \n");
-    print_matrix(s, 1, n);
 
-    free(s); free(a); free(u); free(v);
+    free(s);
+    free(a);
+    free(u);
+    free(v);
     return 0;
 }
