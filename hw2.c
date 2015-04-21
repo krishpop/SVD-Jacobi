@@ -22,7 +22,7 @@
 // matrix functions
 void copy_matrix(double * a, double * b, int n);
 void identity_matrix(double ** m, int n);
-void transpose(double *matrix, double ** transposed_matrix, int n);
+void transpose(double *matrix, int n);
 void multiply(double *m1, double *m2, double * new_matrix, int n);
 void print_matrix(double *m, int rows, int columns);
 double* gen_matrix(int n);
@@ -40,7 +40,7 @@ void jacobi(double * a, int n, double * s, double * u, double * v) {
     // Creates a copy of A, make all changes to A in A
     double * a_copy = (double *)malloc(sizeof(double) * n * n);
     copy_matrix(a, a_copy, n);
-    
+
     // Initializes U and V as identity matrices
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
@@ -68,6 +68,7 @@ void jacobi(double * a, int n, double * s, double * u, double * v) {
 
     order_a(a, n, u, v);
     generate_s(a, s, n);
+    free(a_copy);
 }
 
 void rotate(double * a, int n, double * u, double * v, int p, int q) {
@@ -84,16 +85,16 @@ void rotate(double * a, int n, double * u, double * v, int p, int q) {
     double * l_matrix, * r_matrix;
     generate_composite_matrix(&l_matrix, p, q, n, theta, LEFT);
     generate_composite_matrix(&r_matrix, p, q, n, phi, RIGHT);
-    
+
     double * temp = (double *)malloc(sizeof(double) * n * n);
     // Rotate a to the left and right
     multiply(l_matrix, a, temp, n);
     multiply(temp, r_matrix, a, n);
-    
+
     // Apply rotation on U
     multiply(l_matrix, u, temp, n);
     copy_matrix(temp, u, n);
-    
+
     // Apply rotation on V
 
     multiply(v, r_matrix, temp, n);
@@ -116,26 +117,26 @@ void order_a(double * a, int n, double * u, double * v) {
                 max_d_index = d_i;
             }
         }
-        if (max_d_index > 0) {
-            // reordering values in a
-            double temp_d = a[sort_index * n + sort_index];
-            a[sort_index * n + sort_index] = max_d;
-            a[max_d_index * n + max_d_index] = temp_d;
-            swap_rows(permutation_matrix, sort_index, max_d_index, n);
-            // reorder u and v wrt swapped values in a
-            multiply(permutation_matrix, u, temp_matrix, n);
-            copy_matrix(temp_matrix, u, n);
-            multiply(v, permutation_matrix, temp_matrix, n);
-            copy_matrix(temp_matrix, v, n);
-            // set permutation matrix back to identity
-            free(permutation_matrix);
-            identity_matrix(&permutation_matrix, n);
-        }
+        // reordering values in a
+        double temp_d = a[sort_index * n + sort_index];
+        a[sort_index * n + sort_index] = max_d;
+        a[max_d_index * n + max_d_index] = temp_d;
+        swap_rows(permutation_matrix, sort_index, max_d_index, n);
+        // reorder u and v wrt swapped values in a
+        multiply(permutation_matrix, u, temp_matrix, n);
+        copy_matrix(temp_matrix, u, n);
+        multiply(v, permutation_matrix, temp_matrix, n);
+        copy_matrix(temp_matrix, v, n);
+        // set permutation matrix back to identity
+        free(permutation_matrix);
+        identity_matrix(&permutation_matrix, n);
     }
+    transpose (u, n);
+    transpose (v, n);
     for (d_i = 0; d_i < n; d_i ++) {
         // if diagonal element less than 0, make it positive
         if (a[d_i*n + d_i] < 0.0) {
-            permutation_matrix[d_i*n + d_i] = -1.0;
+            permutation_matrix[d_i * n + d_i] = -1.0;
         }
     }
     multiply(permutation_matrix, a, temp_matrix, n);
@@ -147,10 +148,12 @@ void order_a(double * a, int n, double * u, double * v) {
 
 // swapping rows of an identity matrix
 void swap_rows(double * i_mat, int row1, int row2, int n) {
-    i_mat[row1*n + row1] = 0.0;
-    i_mat[row1*n + row2] = 1.0;
-    i_mat[row2*n + row2] = 0.0;
-    i_mat[row2*n + row1] = 1.0;
+    double temp;
+    for (int col = 0; col < n; col++) {
+        temp = i_mat[row1 * n + col];
+        i_mat[row1 * n + col] = i_mat[row2 * n + col];
+        i_mat[row2 * n + col] = temp;
+    }
 }
 
 void generate_s(double * a, double * s, int n) {
@@ -169,8 +172,7 @@ void multiply(double * m1, double * m2, double * new_matrix, int n) {
             new_matrix[new_row*n + new_column] = 0;
 
             for (old_x = 0; old_x < n; old_x++) {
-                new_matrix[new_row*n + new_column] += m1[new_row*n + old_x] \
-                    * m2[old_x*n + new_column];
+                new_matrix[new_row*n + new_column] += m1[new_row*n + old_x] * m2[old_x*n + new_column];
             }
         }
     }
@@ -197,7 +199,7 @@ int not_converged(double *a, int n) {
             if (row == col) continue;
             else {
                 if (fabs(a[row*n + col]) > epsilon) // not yet converged, error > epsilon
-                    return 1; 
+                    return 1;
             }
         }
     }
@@ -219,14 +221,17 @@ void identity_matrix(double ** m, int n) {
     }
 }
 
-void transpose(double * a, double ** transposed_matrix, int n) {
+void transpose(double * a, int n) {
+    double temp;
     int row, column;
-    *transposed_matrix = (double*)malloc(sizeof(double)*n*n);
 
-    for (row=0; row < n; row++) {
-        for (column=0; column < n; column++) {
-            (*transposed_matrix)[row*n+column] = a[column*n+row]; 
-            (*transposed_matrix)[column*n+row] = a[row*n+column];
+    for (row = 0; row < n; row++) {
+        for (column = (row + 1); column < n; column++) {
+            if (row != column) {
+              temp = a[(row * n) + column];
+              a[(row * n) + column] = a[(column * n) + row];
+              a[(column * n) + row] = temp;
+            }
         }
     }
 }
@@ -245,4 +250,3 @@ void print_matrix(double *m, int rows, int columns) {
 int main(int argc, char const *argv[]) {
     return 0;
 }
-
