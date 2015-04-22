@@ -148,12 +148,10 @@ void order_a(double * a, int n, double * u, double * v) {
 
 // swapping rows of an identity matrix
 void swap_rows(double * i_mat, int row1, int row2, int n) {
-    double temp;
-    for (int col = 0; col < n; col++) {
-        temp = i_mat[row1 * n + col];
-        i_mat[row1 * n + col] = i_mat[row2 * n + col];
-        i_mat[row2 * n + col] = temp;
-    }
+    i_mat[row1 * n + row1] = 0.0;
+    i_mat[row1 * n + row2] = 1.0;
+    i_mat[row2 * n + row2] = 0.0;
+    i_mat[row2 * n + row1] = 1.0;
 }
 
 void generate_s(double * a, double * s, int n) {
