@@ -9,24 +9,13 @@
 // Brent, Luk, Loan, "Computation of the Singular Value Decomposition Using
 // Mesh-Connected Processors"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <limits.h>
-#include <math.h>
+#include "MAT_FUNC.h"
 
 #define ERROR(msg) exit (fprintf (stderr, "%s\n", msg))
 #define LEFT 0
 #define RIGHT 1
 
-// matrix functions
-void copy_matrix(double * a, double * b, int n);
-void identity_matrix(double ** m, int n);
-void transpose(double *matrix, int n);
-void multiply(double *m1, double *m2, double * new_matrix, int n);
-void print_matrix(double *m, int rows, int columns);
-double* gen_matrix(int n);
-void swap_rows(double * i_mat, int row1, int row2, int n);
+
 
 // Jacobi method functions
 void jacobi(double * a, int n, double * s, double * u, double * v);
@@ -67,6 +56,7 @@ void jacobi(double * a, int n, double * s, double * u, double * v) {
     }
 
     order_a(a, n, u, v);
+    transpose(v, n);
     generate_s(a, s, n);
 
     printf("a_copy\n");
@@ -86,6 +76,7 @@ void rotate(double * a, int n, double * u, double * v, int p, int q) {
     double a_pq = a[p*n + q];
     double a_qp = a[q*n + p];
     double a_qq = a[q*n + q];
+    
     // calculate left and right rotation angles, see Brent, et. al
     double theta_phi = atan((a_qp + a_pq) / (a_qq - a_pp));
     double theta_phi_d = atan((a_qp - a_pq) / (a_qq + a_pp));
@@ -96,6 +87,7 @@ void rotate(double * a, int n, double * u, double * v, int p, int q) {
     generate_composite_matrix(&r_matrix, p, q, n, phi, RIGHT);
 
     double * temp = (double *)malloc(sizeof(double) * n * n);
+    
     // Rotate a to the left and right
     multiply(l_matrix, a, temp, n);
     multiply(temp, r_matrix, a, n);
@@ -109,6 +101,19 @@ void rotate(double * a, int n, double * u, double * v, int p, int q) {
     multiply(v, r_matrix, temp, n);
     copy_matrix(temp, v, n);
     free(temp); free(l_matrix); free(r_matrix);
+}
+
+void generate_composite_matrix(double ** matrix, int p, int q, int n, double angle, int side) {
+    identity_matrix(matrix, n);
+    (*matrix)[n*p + p] = (*matrix)[n*q + q] = cos(angle);
+    if (side == LEFT) {
+        (*matrix)[n*p + q] = -sin(angle);
+        (*matrix)[n*q + p] = sin(angle);
+    }
+    else {
+        (*matrix)[n*p + q] = sin(angle);
+        (*matrix)[n*q + p] = -sin(angle);
+    }
 }
 
 void order_a(double * a, int n, double * u, double * v) {
@@ -141,7 +146,7 @@ void order_a(double * a, int n, double * u, double * v) {
         identity_matrix(&permutation_matrix, n);
     }
     transpose (u, n);
-    transpose (v, n);
+    // transpose (v, n);
     for (d_i = 0; d_i < n; d_i ++) {
         // if diagonal element less than 0, make it positive
         if (a[d_i*n + d_i] < 0.0) {
@@ -155,46 +160,9 @@ void order_a(double * a, int n, double * u, double * v) {
     free(permutation_matrix); free(temp_matrix);
 }
 
-// swapping rows of an identity matrix
-void swap_rows(double * i_mat, int row1, int row2, int n) {
-    i_mat[row1 * n + row1] = 0.0;
-    i_mat[row1 * n + row2] = 1.0;
-    i_mat[row2 * n + row2] = 0.0;
-    i_mat[row2 * n + row1] = 1.0;
-}
-
 void generate_s(double * a, double * s, int n) {
     for (int d = 0; d < n; d ++) {
         s[d] = a[d*n + d];
-    }
-}
-
-// TODO: optimize, just multiply col p and q, then row p and q
-void multiply(double * m1, double * m2, double * new_matrix, int n) {
-    int new_row, new_column, old_x;
-
-    for (new_row = 0; new_row < n; new_row++) {
-
-        for (new_column = 0; new_column < n; new_column++) {
-            new_matrix[new_row*n + new_column] = 0;
-
-            for (old_x = 0; old_x < n; old_x++) {
-                new_matrix[new_row*n + new_column] += m1[new_row*n + old_x] * m2[old_x*n + new_column];
-            }
-        }
-    }
-}
-
-void generate_composite_matrix(double ** matrix, int p, int q, int n, double angle, int side) {
-    identity_matrix(matrix, n);
-    (*matrix)[n*p + p] = (*matrix)[n*q + q] = cos(angle);
-    if (side == LEFT) {
-        (*matrix)[n*p + q] = -sin(angle);
-        (*matrix)[n*q + p] = sin(angle);
-    }
-    else {
-        (*matrix)[n*p + q] = sin(angle);
-        (*matrix)[n*q + p] = -sin(angle);
     }
 }
 
@@ -211,64 +179,6 @@ int not_converged(double *a, int n) {
         }
     }
     return 0;
-}
-
-// Copies a to b
-void copy_matrix(double * a, double * b, int n) {
-    for (int i = 0; i < n*n; i++) {
-        b[i] = a[i];
-    }
-}
-
-void identity_matrix(double ** m, int n) {
-    int i;
-    *m = (double*)calloc(sizeof(double), n*n);
-    for (i=0; i<n; i++) {
-        (*m)[i*n+i] = 1.0;
-    }
-}
-
-void transpose(double * a, int n) {
-    double temp;
-    int row, column;
-
-    for (row = 0; row < n; row++) {
-        for (column = (row + 1); column < n; column++) {
-            if (row != column) {
-              temp = a[(row * n) + column];
-              a[(row * n) + column] = a[(column * n) + row];
-              a[(column * n) + row] = temp;
-              printf("%f, %f swapped \n", a[row * n + column], temp);
-            }
-        }
-    }
-}
-
-double* gen_matrix(int n) {
-    double* a = malloc(n * n * sizeof(double));
-    int i, j;
-    double i_p_1, j_p_1;
-    for (i = 0; i < n; ++i)
-    {
-        for (j = 0; j < n; ++j)
-        {
-            i_p_1 = ((double) i) + 1;
-            j_p_1 = ((double) j) + 1;
-            a[i * n + j] = sqrt(i_p_1 * i_p_1 + j_p_1 * j_p_1);
-        }
-    }
-    return a;
-}
-
-void print_matrix(double *m, int rows, int columns) {
-    int row, column;
-    for (row=0; row<rows; row++) {
-        for (column=0; column<columns; column++) {
-            printf("[%d, %d]: %f\t", row, column, m[row*rows+column]);
-        }
-        printf("\n");
-    }
-    printf("\n");
 }
 
 int main(int argc, char const *argv[]) {
