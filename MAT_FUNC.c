@@ -59,34 +59,18 @@ void transpose(double * a, int n) {
 
 double* gen_matrix(int n) {
     double* a = malloc(n * n * sizeof(double));
-        // int i, j;
-        // double i_p_1, j_p_1;
-    a[0] = 42.0;
-    a[1] = 84.0;
-    a[2] = 19.0;
-    a[3] = 65.0;
-    a[4] = 45.0;
-    a[5] = 75.0;
-    a[6] = 6.0;
-    a[7] = 8.0;
-    a[8] = 50.0;
-    a[9] = 72.0;
-    a[10] = 38.0;
-    a[11] = 70.0;
-    a[12] = 87.0;
-    a[13] = 83.0;
-    a[14] = 48.0;
-    a[15] = 5.0;
+    int i, j;
+    double i_p_1, j_p_1;
 
-    // for (i = 0; i < n; ++i)
-    // {
-    //     for (j = 0; j < n; ++j)
-    //     {
-    //         i_p_1 = ((double) i) + 1;
-    //         j_p_1 = ((double) j) + 1;
-    //         a[i * n + j] = sqrt(i_p_1 * i_p_1 + j_p_1 * j_p_1);
-    //     }
-    // }
+    for (i = 0; i < n; ++i)
+    {
+        for (j = 0; j < n; ++j)
+        {
+            i_p_1 = ((double) i) + 1;
+            j_p_1 = ((double) j) + 1;
+            a[i * n + j] = sqrt(i_p_1 * i_p_1 + j_p_1 * j_p_1);
+        }
+    }
     return a;
 }
 

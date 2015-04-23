@@ -15,8 +15,6 @@
 #define LEFT 0
 #define RIGHT 1
 
-
-
 // Jacobi method functions
 void jacobi(double * a, int n, double * s, double * u, double * v);
 void generate_composite_matrix(double ** matrix, int p, int q, int n, double angle, int side);
@@ -56,7 +54,6 @@ void jacobi(double * a, int n, double * s, double * u, double * v) {
     }
 
     order_a(a, n, u, v);
-    transpose(v, n);
     generate_s(a, s, n);
 
     printf("a_copy\n");
@@ -146,7 +143,7 @@ void order_a(double * a, int n, double * u, double * v) {
         identity_matrix(&permutation_matrix, n);
     }
     transpose (u, n);
-    // transpose (v, n);
+    transpose (v, n);
     for (d_i = 0; d_i < n; d_i ++) {
         // if diagonal element less than 0, make it positive
         if (a[d_i*n + d_i] < 0.0) {
